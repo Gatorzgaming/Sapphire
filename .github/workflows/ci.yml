@@ -6,22 +6,21 @@ on:
       - "**/*.md"
   pull_request_target:
   workflow_dispatch:
-
+  
 jobs:
   lint:
     name: Check for lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v2
         with:
           submodules: recursive
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 19.1.0
-          cache: 'yarn'
 
-      - name: Install gcc dependencies
-        run: sudo apt update && sudo apt install gcc-multilib g++-multilib libvips
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 14
 
       - name: Install Dependencies
         run: yarn install
@@ -33,16 +32,15 @@ jobs:
     name: Run unit tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v2
         with:
           submodules: recursive
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 19.1.0
-          cache: 'yarn'
 
-      - name: Install gcc dependencies
-        run: sudo apt update && sudo apt install gcc-multilib g++-multilib libvips
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 14
 
       - name: Install Dependencies
         run: yarn install
@@ -56,13 +54,15 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v2
         with:
           submodules: recursive
-      - uses: actions/setup-node@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
         with:
-          node-version: 19.1.0
-          cache: 'yarn'
+          node-version: 14
 
       - name: Install Dependencies
         run: yarn install
@@ -71,8 +71,9 @@ jobs:
         run: yarn package
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
+          name: windows-artifacts
           path: |
             release/build/*.yml
             release/build/*.yaml
@@ -84,20 +85,22 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v2
         with:
           submodules: recursive
-      - uses: actions/setup-node@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
         with:
-          node-version: 19.1.0
-          cache: 'yarn'
+          node-version: 14
 
       - name: Install Dependencies
         run: yarn install
 
       - name: Make gradlew executable
         run: chmod +x ./src/android/gradlew
-        
+
       - name: Build Amethyst
         run: yarn build:renderer && yarn cap sync && yarn cap build android --keystorepath key.jks --androidreleasetype APK --keystorepass ${{ secrets.ANDROID_KEYSTORE_PASS }} --keystorealias key0 --keystorealiaspass ${{ secrets.ANDROID_KEYSTORE_ALIAS_PASS }}
 
@@ -105,8 +108,9 @@ jobs:
         run: yarn move-file ./src/android/app/build/outputs/apk/release/app-release-signed.apk ./release/build/android/amethyst-v$(node -p "require('./package.json').version").apk
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
+          name: android-artifacts
           path: |
             release/build/android/*.apk
             release/build/android/*.json
@@ -117,13 +121,15 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v2
         with:
           submodules: recursive
-      - uses: actions/setup-node@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
         with:
-          node-version: 19.1.0
-          cache: 'yarn'
+          node-version: 14
 
       - name: Install Dependencies
         run: yarn install
@@ -132,8 +138,9 @@ jobs:
         run: USE_HARD_LINKS=false yarn package
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
+          name: macos-artifacts
           path: |
             release/build/*.yml
             release/build/*.dmg
@@ -141,55 +148,20 @@ jobs:
             release/build/*.zip
             release/build/*.zip.*
 
-  # build-linux:
-  #   name: Build Linux
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     contents: write
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #       with:
-  #         submodules: recursive
-  #     - uses: actions/setup-node@v3
-  #       with:
-  #         node-version: 19.1.0
-  #         cache: 'yarn'
+publish-releases:
+  if: startsWith(github.ref, 'refs/tags/v')
+  needs: [build-windows, build-macos, build-android]
+  name: Publish Releases
+  runs-on: ubuntu-latest
+  permissions:
+    contents: write
+  steps:
+    - name: Download All Artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: windows-artifacts
 
-  #     - name: Install linux dependencies
-  #       run: sudo apt update && sudo apt install rpm snapd libarchive-tools && sudo snap install snapcraft --classic && sudo snap install multipass --beta --classic
-
-  #     - name: Install Dependencies
-  #       run: yarn install
-
-  #     - name: Build Amethyst
-  #       run: yarn package
-
-  #     - name: Upload Artifacts
-  #       uses: actions/upload-artifact@v3
-  #       with:
-  #         path: |
-  #           release/build/*.yml
-  #           release/build/*.yaml
-  #           release/build/*.AppImage
-  #           release/build/*.rpm
-  #           release/build/*.deb
-  #           release/build/*.pacman
-  #           release/build/*.snap
-
-  publish-releases:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-windows, build-macos,  build-android]
-    name: Publish Releases
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Download All Artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: artifact
-
-      - name: Post Releases
-        uses: ncipollo/release-action@v1
-        with:
-          artifacts: "./*"
+    - name: Post Releases
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: "./*"
