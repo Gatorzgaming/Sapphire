@@ -24,17 +24,15 @@ export class MediaSession {
     this.player.on("play", () => navigator.mediaSession.playbackState = "playing");
     this.player.on("pause", () => navigator.mediaSession.playbackState = "paused");
 
-    this.player.on("play", track => {
-      const cover = track.getMetadata()?.common.picture?.[0];
-      let coverUrl: string = "";
-
-      cover && (coverUrl = URL.createObjectURL(new Blob([new Uint8Array(cover.data)], { type: "image/png" })));
+    this.player.on("play", async track => {
+      const cover = (await track.fetchMetadata(true))?.common.picture?.[0];
+      const coverUrl: string = await track.getCover() ?? "";
 
       navigator.mediaSession.metadata = new MediaMetadata({
         title: track.getTitleFormatted(),
         artist: track.getArtistsFormatted(),
         album: track.getAlbumFormatted(),
-        artwork: [{ src: coverUrl, type: "image/png" }],
+        artwork: [{ src: coverUrl, type: cover?.format }],
       });
     });
   }

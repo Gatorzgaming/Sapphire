@@ -154,7 +154,7 @@ onUnmounted(() => {
         </navigation-bar>
 
         <div class="flex flex-col w-full">
-          <router-view class="overflow-hidden" />
+          <router-view class="overflow-hidden disable-select no-drag" />
           <div
             class="flex justify-end w-full gap-2"
             :class="[(state.settings.value.showBigSpectrum || state.settings.value.showBigVectorscope) && 'p-2']"
@@ -281,6 +281,12 @@ onUnmounted(() => {
 
 <style lang="postcss">
 @import url(themes/amethyst-dark.css);
+@import url(themes/emerald-dark.css);
+@import url(themes/onyx-dark.css);
+@import url(themes/rose-dark.css);
+@import url(themes/ruby-dark.css);
+@import url(themes/sapphire-dark.css);
+
 /* these are necessary styles for vue flow */
 @import '@vue-flow/core/dist/style.css';
 
@@ -398,6 +404,13 @@ body,
 
 .clickable {
   @apply cursor-pointer border-1 border-transparent hover:bg-primary-700 hover:bg-opacity-10;
+}
+
+.disable-select {
+  -webkit-user-select: none;  
+  -moz-user-select: none;    
+  -ms-user-select: none;      
+  user-select: none;
 }
 
 </style>
